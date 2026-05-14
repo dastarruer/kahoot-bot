@@ -24,30 +24,38 @@ def main():
         # page.press("[placeholder='Game PIN']", "Enter")
 
         # Use a solo game for now
-        page.goto("https://create.kahoot.it/solo?quizId=a238a5fe-edac-4b3b-92d9-dda6ef27af94&gameMode=normal")
+        page.goto(
+            "https://create.kahoot.it/solo?quizId=a238a5fe-edac-4b3b-92d9-dda6ef27af94&gameMode=normal"
+        )
         page.get_by_text("OK, go!").click()
+        page.wait_for_selector("[data-functional-selector='answer-0']")
 
+        question = page.query_selector("[data-functional-selector^='block-title-']")
+        choices = []
+        for element in page.query_selector_all("[data-functional-selector^='answer-']"):
+            choices.append(element.inner_text())
 
-    # start = time()
-    # chat_completion = client.chat.completions.create(
-    #     messages=[
-    #         {
-    #             "role": "system",
-    #             "content": "Pick the correct option. Reply with only the letter",
-    #         },
-    #         {
-    #             "role": "user",
-    #             "content": f"Question: {question}\na) {option_a} b) {option_b} c) {option_c} d) {option_d}"
-    #         }
-    #     ],
-    #     temperature=0, # we need predictable answers. creativity CANNOT be allowed in here.
-    #     max_tokens=1, # only generate one letter
-    #     model="llama-3.1-8b-instant" # Incredibly fast
-    # )
-    # elapsed = time() - start
+        start = time()
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Pick the correct option. Reply with only the letter",
+                },
+                {
+                    "role": "user",
+                    "content": f"Question: {question}\na) {choices[0]} b) {choices[1]} c) {choices[2]} d) {choices[3]}",
+                },
+            ],
+            temperature=0,  # we need predictable answers. creativity CANNOT be allowed in here.
+            max_tokens=1,  # only generate one letter
+            model="llama-3.1-8b-instant",  # Incredibly fast
+        )
+        elapsed = time() - start
 
-    # print(f"Answer: {chat_completion.choices[0].message.content}")
-    # print(f"Time: {elapsed:.2f}s")
+        print(f"Answer: {chat_completion.choices[0].message.content}")
+        print(f"Time: {elapsed:.2f}s")
+        sleep(5)
 
 
 if __name__ == "__main__":
