@@ -1,4 +1,5 @@
 import os
+from time import time
 
 import groq
 
@@ -12,23 +13,28 @@ option_b = "China"
 option_c = "USA"
 option_d = "Nepal"
 
-chat_completion = client.chat.completions.create(
-    messages=[
-        {
-            "role": "system",
-            "content": "You are a Kahoot bot. Given a question and multiple options, choose only ONE option by returning a, b, c, or d. Nothing else.",
-        },
-        {
-            "role": "user",
-            "content": f"Question: {question}\na) {option_a}\nb) {option_b}\nc) {option_c}\nd) {option_d}"
-        }
-    ],
-    temperature=0, # we need predictable answers. creativity CANNOT be allowed in here.
-    model="llama-3.3-70b-versatile"
-)
 
 def main():
-    print(chat_completion.choices[0].message.content)
+    start = time()
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "system",
+                "content": "Pick the correct option. Reply with only the letter",
+            },
+            {
+                "role": "user",
+                "content": f"Question: {question}\na) {option_a} b) {option_b} c) {option_c} d) {option_d}"
+            }
+        ],
+        temperature=0, # we need predictable answers. creativity CANNOT be allowed in here.
+        max_tokens=1, # only generate one letter
+        model="llama-3.1-8b-instant" # Incredibly fast
+    )
+    elapsed = time() - start
+
+    print(f"Answer: {chat_completion.choices[0].message.content}")
+    print(f"Time: {elapsed:.2f}s")
 
 
 if __name__ == "__main__":
