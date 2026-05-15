@@ -2,7 +2,7 @@ import os
 from time import sleep, time
 
 import groq
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import ElementHandle, sync_playwright
 
 client = groq.Groq(
     api_key=os.environ.get("GROQ_API_KEY"),
@@ -32,39 +32,53 @@ def main():
         while True:
             page.wait_for_selector("[data-functional-selector='answer-0']")
 
-            question = page.query_selector("[data-functional-selector^='block-title-']")
-            choices = []
+            question_el = page.wait_for_selector("[data-functional-selector^='block-title']")
+            assert question_el is not None
+            question = question_el.inner_text()
+
+            options: list[str] = []
             for element in page.query_selector_all(
                 "[data-functional-selector^='answer-']"
             ):
-                choices.append(element.inner_text())
+                options.append(element.inner_text())
 
             start = time()
-            chat_completion = client.chat.completions.create(
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "Pick the correct option. Reply with only the number",
-                    },
-                    {
-                        "role": "user",
-                        "content": f"Question: {question}\n0) {choices[0]} 1) {choices[1]} 2) {choices[2]} 3) {choices[3]}",
-                    },
-                ],
-                temperature=0,  # we need predictable answers. creativity CANNOT be allowed in here.
-                max_tokens=1,  # only generate one letter
-                model="llama-3.1-8b-instant",  # Incredibly fast
-            )
+            answer = ask_groq_for_the_answer(question, options)
             elapsed = time() - start
 
-            answer = chat_completion.choices[0].message.content
-            
             print(f"Answer: {answer}")
             print(f"Time: {elapsed:.2f}s")
 
-            page.click(
-                f"[data-functional-selector='answer-{answer}']"
-            )
+            page.click(f"[data-functional-selector='answer-{answer}']")
+
+
+def ask_groq_for_the_answer(question: str, options: list[str]) -> str:
+    system_prompt = "Pick the correct option. Reply with only the number"
+
+    content = f"Question: {question}\n"
+    for i, option in enumerate(options):
+        # Will look similar to "0) <option> "
+        content += f"{i}) {option} "
+
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "system",
+                "content": system_prompt,
+            },
+            {
+                "role": "user",
+                "content": content,
+            },
+        ],
+        temperature=0,  # we need predictable answers. creativity CANNOT be allowed in here.
+        max_tokens=1,  # only generate one letter
+        model="llama-3.1-8b-instant",  # Incredibly fast
+    )
+
+    # I choose 0 because... no reason really, just need *a* fallback
+    fallback = "0"
+    return chat_completion.choices[0].message.content or fallback
 
 
 if __name__ == "__main__":
